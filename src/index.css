@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0;
+  font-family: 'Rajdhani', sans-serif;
+  background: #06080f;
+  color: #d6ecff;
+  /* Solo Leveling atmospheric backdrop */
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, rgba(57,198,255,.18), transparent 60%),
+    radial-gradient(800px 500px at 90% 110%, rgba(163,113,247,.12), transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(57,198,255,.025) 3px);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.font-display { font-family: 'Orbitron', sans-serif; }
+
+/* System panel — angled, glowing blue frame like the SL status window */
+.sys-panel {
+  position: relative;
+  background: linear-gradient(160deg, rgba(11,17,32,.92), rgba(6,12,26,.92));
+  border: 1px solid rgba(57,198,255,.45);
+  box-shadow: 0 0 14px rgba(57,198,255,.35), inset 0 0 22px rgba(57,198,255,.06);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+.sys-panel::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(57,198,255,.12), transparent 30%);
+  pointer-events: none;
+}
+
+.xp-bar { background: rgba(57,198,255,.12); }
+.xp-fill {
+  background: linear-gradient(90deg, #1c9bd6, #5ad8ff);
+  box-shadow: 0 0 10px rgba(90,216,255,.8);
+  transition: width .6s cubic-bezier(.2,.9,.2,1);
+}
+
+@keyframes pulseGlow {
+  0%,100% { text-shadow: 0 0 8px rgba(90,216,255,.6); }
+  50% { text-shadow: 0 0 20px rgba(90,216,255,1); }
+}
+.glow-text { animation: pulseGlow 2.4s ease-in-out infinite; }
+
+/* hide scrollbars on mobile chat */
+.no-sb::-webkit-scrollbar { display: none; }
+.no-sb { scrollbar-width: none; }
+
+/* safe area for iPhone notch / home bar */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 4px); }
