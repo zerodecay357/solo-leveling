@@ -7,7 +7,8 @@ dotenv.config()
 
 const app = express()
 app.use(express.json())
-app.use(cors({ origin: (process.env.ALLOWED_ORIGIN || '*').split(',') }))
+const allowedOrigin = process.env.ALLOWED_ORIGIN || '*'
+app.use(cors({ origin: allowedOrigin === '*' ? '*' : allowedOrigin.split(',') }))
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
