@@ -75,13 +75,22 @@ export default function App() {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto safe-bottom">
-        <div className="m-3 sys-panel flex justify-around py-2">
+        <div className="m-3 nav-panel flex justify-around py-2.5">
           {tabs.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setTab(id)}
-              className="flex flex-col items-center gap-0.5 px-3 py-1"
-              style={{ color: tab === id ? '#5ad8ff' : 'rgba(57,198,255,.45)' }}>
-              <Icon size={20} style={{ filter: tab === id ? 'drop-shadow(0 0 6px #5ad8ff)' : 'none' }} />
+              className="flex flex-col items-center gap-0.5 px-3 py-1 transition-all duration-300"
+              style={{
+                color: tab === id ? '#5ad8ff' : 'rgba(57,198,255,.35)',
+              }}>
+              <Icon size={20} style={{
+                filter: tab === id ? 'drop-shadow(0 0 8px #5ad8ff) drop-shadow(0 0 16px rgba(90,216,255,.3))' : 'none',
+                transition: 'filter 0.3s ease'
+              }} />
               <span className="text-[10px] font-display tracking-wider">{label}</span>
+              {tab === id && (
+                <div className="w-4 h-0.5 rounded-full mt-0.5"
+                  style={{ background: '#5ad8ff', boxShadow: '0 0 6px #5ad8ff' }} />
+              )}
             </button>
           ))}
         </div>
