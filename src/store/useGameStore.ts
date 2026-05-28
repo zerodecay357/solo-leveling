@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { rankForLevel, xpToNext, applyXp, DIFFICULTY_XP } from '../lib/ranks'
 
 export type Category = 'gym' | 'looksmaxing' | 'study' | 'cardio' | 'mind' | 'custom'
@@ -28,6 +28,7 @@ interface GameState {
   loginStreak: number
   lastLogin?: string
   freezesLeft: number
+  _userId: string           // tracks which user this store belongs to
   // actions
   setName: (n: string) => void
   addQuest: (q: Partial<Quest>) => Quest
@@ -35,6 +36,7 @@ interface GameState {
   deleteQuest: (id: string) => void
   completeQuest: (id: string) => number   // returns levelUps
   touchLogin: () => void
+  loadUser: (username: string) => void
 }
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -45,72 +47,121 @@ function isYesterday(iso?: string) {
   return d.toISOString().slice(0, 10) === y.toISOString().slice(0, 10)
 }
 
-const seedQuests: Quest[] = [
-  { id: 'q_gym', title: 'Gym Session', category: 'gym', difficulty: 'Hard', xpReward: 60, days: ['Mon','Wed','Fri','Sat'], streak: 0, longest: 0 },
-  { id: 'q_swim', title: 'Swimming', category: 'cardio', difficulty: 'Medium', xpReward: 30, days: ['Tue','Thu','Fri'], timeStart: '17:00', timeEnd: '18:00', streak: 0, longest: 0 },
-  { id: 'q_skin', title: 'Looksmaxing Routine (skincare + grooming)', category: 'looksmaxing', difficulty: 'Easy', xpReward: 15, days: [], streak: 0, longest: 0 },
-  { id: 'q_posture', title: 'Posture / Mewing Check', category: 'looksmaxing', difficulty: 'Easy', xpReward: 15, days: [], streak: 0, longest: 0 },
-  { id: 'q_study', title: 'Deep Study Block', category: 'study', difficulty: 'Hard', xpReward: 60, days: [], streak: 0, longest: 0 }
-]
+// Per-user save/load helpers
+function saveUserData(username: string, data: Partial<GameState>) {
+  const key = `solorise-save-${username}`
+  const existing = JSON.parse(localStorage.getItem(key) || '{}')
+  localStorage.setItem(key, JSON.stringify({ ...existing, ...data }))
+}
+
+function loadUserData(username: string): Partial<GameState> | null {
+  const key = `solorise-save-${username}`
+  const raw = localStorage.getItem(key)
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
+}
+
+const defaultState = {
+  name: 'Player',
+  level: 1,
+  xp: 0,
+  quests: [] as Quest[],     // Start empty — user sets quests via chatbot
+  loginStreak: 1,
+  freezesLeft: 2,
+  _userId: '',
+}
 
 export const useGameStore = create<GameState>()(
-  persist(
-    (set, get) => ({
-      name: 'Player',
-      level: 1,
-      xp: 0,
-      quests: seedQuests,
-      loginStreak: 1,
-      freezesLeft: 2,
+  (set, get) => ({
+    ...defaultState,
 
-      setName: (n) => set({ name: n }),
+    setName: (n) => {
+      set({ name: n })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { name: n })
+    },
 
-      addQuest: (q) => {
-        const diff = (q.difficulty || 'Easy') as Difficulty
-        const quest: Quest = {
-          id: 'q_' + Math.random().toString(36).slice(2, 9),
-          title: q.title || 'New Quest',
-          category: (q.category || 'custom') as Category,
-          difficulty: diff,
-          xpReward: q.xpReward ?? DIFFICULTY_XP[diff],
-          days: q.days || [],
-          timeStart: q.timeStart,
-          timeEnd: q.timeEnd,
-          streak: 0, longest: 0
-        }
-        set({ quests: [...get().quests, quest] })
-        return quest
-      },
-
-      editQuest: (id, patch) =>
-        set({ quests: get().quests.map(q => q.id === id ? { ...q, ...patch } : q) }),
-
-      deleteQuest: (id) =>
-        set({ quests: get().quests.filter(q => q.id !== id) }),
-
-      completeQuest: (id) => {
-        const q = get().quests.find(x => x.id === id)
-        if (!q || q.lastCompleted === todayStr()) return 0
-        const newStreak = isYesterday(q.lastCompleted) ? q.streak + 1 : 1
-        const { level, xp, levelUps } = applyXp(get().level, get().xp, q.xpReward)
-        set({
-          level, xp,
-          quests: get().quests.map(x => x.id === id
-            ? { ...x, lastCompleted: todayStr(), streak: newStreak, longest: Math.max(x.longest, newStreak) }
-            : x)
-        })
-        return levelUps
-      },
-
-      touchLogin: () => {
-        const last = get().lastLogin
-        if (last === todayStr()) return
-        const streak = isYesterday(last) ? get().loginStreak + 1 : 1
-        set({ lastLogin: todayStr(), loginStreak: streak })
+    addQuest: (q) => {
+      const diff = (q.difficulty || 'Easy') as Difficulty
+      const quest: Quest = {
+        id: 'q_' + Math.random().toString(36).slice(2, 9),
+        title: q.title || 'New Quest',
+        category: (q.category || 'custom') as Category,
+        difficulty: diff,
+        xpReward: q.xpReward ?? DIFFICULTY_XP[diff],
+        days: q.days || [],
+        timeStart: q.timeStart,
+        timeEnd: q.timeEnd,
+        streak: 0, longest: 0
       }
-    }),
-    { name: 'solorise-save' }
-  )
+      const newQuests = [...get().quests, quest]
+      set({ quests: newQuests })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { quests: newQuests })
+      return quest
+    },
+
+    editQuest: (id, patch) => {
+      const newQuests = get().quests.map(q => q.id === id ? { ...q, ...patch } : q)
+      set({ quests: newQuests })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { quests: newQuests })
+    },
+
+    deleteQuest: (id) => {
+      const newQuests = get().quests.filter(q => q.id !== id)
+      set({ quests: newQuests })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { quests: newQuests })
+    },
+
+    completeQuest: (id) => {
+      const q = get().quests.find(x => x.id === id)
+      if (!q || q.lastCompleted === todayStr()) return 0
+      const newStreak = isYesterday(q.lastCompleted) ? q.streak + 1 : 1
+      const { level, xp, levelUps } = applyXp(get().level, get().xp, q.xpReward)
+      const newQuests = get().quests.map(x => x.id === id
+        ? { ...x, lastCompleted: todayStr(), streak: newStreak, longest: Math.max(x.longest, newStreak) }
+        : x)
+      set({ level, xp, quests: newQuests })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { level, xp, quests: newQuests })
+      return levelUps
+    },
+
+    touchLogin: () => {
+      const last = get().lastLogin
+      if (last === todayStr()) return
+      const streak = isYesterday(last) ? get().loginStreak + 1 : 1
+      set({ lastLogin: todayStr(), loginStreak: streak })
+      const uid = get()._userId
+      if (uid) saveUserData(uid, { lastLogin: todayStr(), loginStreak: streak })
+    },
+
+    loadUser: (username) => {
+      const saved = loadUserData(username)
+      if (saved) {
+        set({
+          name: saved.name || username,
+          level: saved.level ?? 1,
+          xp: saved.xp ?? 0,
+          quests: saved.quests ?? [],
+          loginStreak: saved.loginStreak ?? 1,
+          lastLogin: saved.lastLogin,
+          freezesLeft: saved.freezesLeft ?? 2,
+          _userId: username,
+        })
+      } else {
+        // Brand new user — start fresh
+        set({
+          ...defaultState,
+          name: username,
+          _userId: username,
+        })
+        saveUserData(username, { ...defaultState, name: username, _userId: username })
+      }
+    }
+  })
 )
 
 // selectors / helpers used by UI

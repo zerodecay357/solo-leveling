@@ -56,3 +56,35 @@ body {
 /* safe area for iPhone notch / home bar */
 .safe-top { padding-top: env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 4px); }
+
+/* Login screen floating particles */
+.login-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.login-particles::before,
+.login-particles::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  animation: float 8s ease-in-out infinite;
+}
+.login-particles::before {
+  width: 300px; height: 300px;
+  top: 20%; left: -10%;
+  background: radial-gradient(circle, rgba(57,198,255,.08), transparent 70%);
+  animation-delay: 0s;
+}
+.login-particles::after {
+  width: 200px; height: 200px;
+  bottom: 10%; right: -5%;
+  background: radial-gradient(circle, rgba(163,113,247,.08), transparent 70%);
+  animation-delay: -4s;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-30px) scale(1.1); }
+}

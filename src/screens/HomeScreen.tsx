@@ -22,7 +22,12 @@ export default function HomeScreen() {
         <h2 className="font-display text-system-blue tracking-widest text-sm">⟪ DAILY QUESTS ⟫</h2>
         <span className="text-xs text-system-blue/60">{remaining} remaining</span>
       </div>
-      {todays.length === 0 && <p className="text-system-blue/50 text-sm">No quests scheduled today. Rest, Hunter.</p>}
+      {todays.length === 0 && (
+        <div className="sys-panel p-4 text-center">
+          <p className="text-system-blue/70 text-sm mb-1">No quests yet, Hunter.</p>
+          <p className="text-system-blue/40 text-xs">Go to the <span className="text-system-blue">System</span> tab and tell the AI about your goals to create your quest board.</p>
+        </div>
+      )}
       {todays.map(q => (
         <QuestCard key={q.id} quest={q} done={isDoneToday(q)} onComplete={() => handleComplete(q.id)} />
       ))}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Home, Sparkles, ListChecks, MessageSquare } from 'lucide-react'
+import { Home, Sparkles, ListChecks, MessageSquare, LogOut } from 'lucide-react'
+import { useAuthStore } from './store/useAuthStore'
 import { useGameStore } from './store/useGameStore'
+import LoginScreen from './screens/LoginScreen'
 import HomeScreen from './screens/HomeScreen'
 import LooksmaxScreen from './screens/LooksmaxScreen'
 import QuestsScreen from './screens/QuestsScreen'
@@ -16,14 +18,53 @@ const tabs: { id: Tab; icon: any; label: string }[] = [
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home')
+  const currentUser = useAuthStore(s => s.currentUser)
+  const logout = useAuthStore(s => s.logout)
+  const loadUser = useGameStore(s => s.loadUser)
   const touchLogin = useGameStore(s => s.touchLogin)
-  useEffect(() => { touchLogin() }, [touchLogin])
+  const [tab, setTab] = useState<Tab>('home')
+  const [ready, setReady] = useState(false)
+
+  // When user logs in, load their per-user store
+  useEffect(() => {
+    if (currentUser) {
+      loadUser(currentUser)
+      touchLogin()
+      setReady(true)
+    } else {
+      setReady(false)
+      setTab('home')
+    }
+  }, [currentUser])
+
+  // Not logged in → show login screen
+  if (!currentUser) return <LoginScreen />
+
+  // Waiting for store to initialize
+  if (!ready) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="font-display text-system-blue animate-pulse tracking-widest">LOADING...</p>
+    </div>
+  )
 
   return (
     <div className="max-w-md mx-auto min-h-screen px-4 safe-top">
-      <header className="py-4 text-center">
-        <h1 className="font-display text-2xl font-black tracking-[.25em] text-white glow-text">SOLO<span className="text-system-blue">RISE</span></h1>
+      <header className="py-4 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-black tracking-[.25em] text-white glow-text">
+          SOLO<span className="text-system-blue">RISE</span>
+        </h1>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-system-blue/60 font-display tracking-wider">
+            {currentUser}
+          </span>
+          <button
+            onClick={() => { logout(); setReady(false) }}
+            className="text-system-blue/40 hover:text-red-400 transition-colors"
+            title="Logout"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </header>
 
       <main>
